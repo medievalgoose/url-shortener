@@ -3,24 +3,34 @@ package db
 import (
 	"fmt"
 	"log"
+	"medievalgoose/url-shortener/util"
 )
 
 type CustomURL struct {
-	PlainUrl string
-	ShortUrl string
+	Id       int
+	PlainUrl string `json:"plain_url"`
+	ShortUrl string `json:"short_url"`
 }
 
-func AddNewUrl(newUrl CustomURL) error {
+func AddNewUrl(newUrl CustomURL) (string, error) {
 	db := OpenConnection()
 	defer db.Close()
 
-	createQuery := "INSERT INTO urls (plain_url, short_url) VALUES ($1, $2);"
-	_, err := db.Exec(createQuery, newUrl.PlainUrl, newUrl.ShortUrl)
+	createQuery := "INSERT INTO urls (plain_url) VALUES ($1) RETURNING id;"
+	err := db.QueryRow(createQuery, newUrl.PlainUrl).Scan(&newUrl.Id)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	newUrl.ShortUrl = util.EncodeToBase62(newUrl.Id)
+
+	updateUrlQuery := "UPDATE urls SET short_url = $1 WHERE id = $2;"
+	_, err = db.Exec(updateUrlQuery, newUrl.ShortUrl, newUrl.Id)
+	if err != nil {
+		return "", err
+	}
+
+	return newUrl.ShortUrl, nil
 }
 
 func IsValidUrl(url string) bool {

@@ -15,7 +15,7 @@ func main() {
 	// Routes
 	router.POST("/login/", loginHandler)
 	router.POST("/register/", registerHandler)
-	router.GET("/create/", middleware.ValidateToken(), createHandler)
+	router.POST("/create/", middleware.ValidateToken(), createHandler)
 	router.GET("/:url/", redirectHandler)
 
 	router.Run("localhost:8080")
@@ -57,7 +57,6 @@ func registerHandler(ctx *gin.Context) {
 }
 
 func createHandler(ctx *gin.Context) {
-	// TODO: Add short url creation logic here.
 	var UrlRequest db.CustomURL
 
 	err := ctx.BindJSON(&UrlRequest)
@@ -65,7 +64,12 @@ func createHandler(ctx *gin.Context) {
 		log.Fatal(err)
 	}
 
-	db.AddNewUrl(UrlRequest)
+	generatedShortUrl, err := db.AddNewUrl(UrlRequest)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"short url": generatedShortUrl})
 }
 
 func redirectHandler(ctx *gin.Context) {
